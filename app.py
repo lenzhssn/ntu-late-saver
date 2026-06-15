@@ -61,62 +61,25 @@ def get_current_ntu_period_info():
             break
     return current_day, current_period
 
-# --- 網頁全域外觀設定（高級感深色調）---
+# --- 網頁全域外觀設定（使用官方安全原生外觀，完美適應深色模式）---
 st.set_page_config(page_title="NTU Late Saver", layout="centered")
 
-# 修正相容性：移除舊版 markdown 注入法，改用最新的 st.html 來穩定渲染極簡純黑風格
-st.html("""
-    <style>
-    .stApp {
-        background-color: #12131a;
-        color: #e2e8f0;
-    }
-    h1 {
-        font-weight: 400 !important;
-        letter-spacing: 0.5px;
-        color: #f7fafc;
-        margin-bottom: 25px !important;
-    }
-    .stButton>button {
-        background-color: #2b5c8f !important;
-        color: white !important;
-        border-radius: 4px !important;
-        border: none !important;
-        padding: 6px 20px !important;
-        transition: background-color 0.3s;
-    }
-    .stButton>button:hover {
-        background-color: #1f446c !important;
-    }
-    div[data-baseweb="tab-list"] {
-        gap: 8px;
-    }
-    button[data-baseweb="tab"] {
-        color: #a0aec0 !important;
-        font-size: 14px !important;
-    }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        color: #f7fafc !important;
-        border-bottom-color: #2b5c8f !important;
-    }
-    </style>
-""")
-
 st.title("NTU Late Saver")
+st.caption("台大專屬 · 自動對齊上課鐘聲的通勤死線預報系統")
 
 data = load_data()
 cur_day_init, cur_period_init = get_current_ntu_period_info()
 classroom_options = [loc for loc in data["locations"] if loc not in ["公館捷運站", "科技大樓捷運站"]]
 
-tab1, tab2, tab3, tab4 = st.tabs(["紀錄通勤", "情境查詢", "智慧防遲到", "課表設定"])
+tab1, tab2, tab3, tab4 = st.tabs(["🚀 紀錄通勤", "🔍 情境查詢", "⏱️ 智慧防遲到", "⚙️ 課表設定"])
 
-st.sidebar.markdown("### 全域環境設定")
+st.sidebar.markdown("### 🌍 全域環境設定")
 trans_mode = st.sidebar.radio("通勤方式", ["走路", "腳踏車"])
 weather_condition = st.sidebar.radio("當前天氣", ["晴天", "雨天"])
 
 # --- 分頁 1：紀錄通勤 ---
 with tab1:
-    st.markdown("<br>", unsafe_with_html_allowed=True)
+    st.write("") # 使用安全原生間距，替代 <br>
     s1 = st.selectbox("出發地", data["locations"] + ["其他"], key="s1")
     s1_other = st.text_input("新起點名稱", placeholder="請輸入自訂起點", key="s1_o") if s1 == "其他" else ""
     
@@ -128,13 +91,13 @@ with tab1:
         st.session_state.start_time = 0
 
     if not st.session_state.is_timing:
-        if st.button("開始計時", key="btn_t1"):
+        if st.button("⏱️ 開始計時", key="btn_t1"):
             st.session_state.is_timing = True
             st.session_state.start_time = time.time()
             st.rerun()
     else:
         st.warning("系統正持續記錄通勤時間中...")
-        if st.button("停止計時並儲存", key="btn_t2"):
+        if st.button("🛑 停止計時並儲存", key="btn_t2"):
             duration = round((time.time() - st.session_state.start_time) / 60, 1)
             st.session_state.is_timing = False
             
@@ -158,14 +121,14 @@ with tab1:
 
 # --- 分頁 2：情境查詢 ---
 with tab2:
-    st.markdown("<br>", unsafe_with_html_allowed=True)
+    st.write("")
     s2 = st.selectbox("出發地", data["locations"] + ["其他"], key="s2")
     s2_other = st.text_input("新起點名稱", placeholder="請輸入自訂起點", key="s2_o") if s2 == "其他" else ""
     
     d2 = st.selectbox("目的地", data["locations"] + ["其他"], key="d2")
     d2_other = st.text_input("新終點名稱", placeholder="請輸入自訂終點", key="d2_o") if d2 == "其他" else ""
     
-    if st.button("查詢歷史數據"):
+    if st.button("📊 查詢歷史數據"):
         start_loc = s2 if s2 != "其他" else s2_other
         dest_loc = d2 if d2 != "其他" else d2_other
         records = [h for h in data["history"] if h["start"] == start_loc and h["dest"] == dest_loc and h["trans"] == trans_mode and h["weather"] == weather_condition]
@@ -178,14 +141,14 @@ with tab2:
 
 # --- 分頁 3：智慧防遲到 ---
 with tab3:
-    st.markdown("<br>", unsafe_with_html_allowed=True)
+    st.write("")
     s3 = st.selectbox("出發地", data["locations"] + ["其他"], key="s3")
-    s3_other = st.text_input("新起點名稱", placeholder="請輸入自訂起點", key="s3_o") if s3 == " campaigners" else ""
+    s3_other = st.text_input("新起點名稱", placeholder="請輸入自訂起點", key="s3_o") if s3 == "其他" else ""
     
     q_day = st.selectbox("查詢星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"], index=["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"].index(cur_day_init))
     q_period = st.selectbox("查詢節次", list(NTU_PERIODS.keys()), index=list(NTU_PERIODS.keys()).index(cur_period_init))
     
-    if st.button("計算出發時限"):
+    if st.button("🔮 計算出發時限"):
         start_loc = s3 if s3 != "其他" else s3_other
         schedule_key = f"{q_day}_{q_period}"
         class_info = data.get("schedule", {}).get(schedule_key, None)
@@ -204,26 +167,21 @@ with tab3:
                 class_start_in_mins = p_info["start"][0] * 60 + p_info["start"][1]
                 latest_dep = int(class_start_in_mins - avg_commute)
                 
-                st.html(f"""
-                <div style="padding: 20px; border: 1px solid #2d3748; background-color: #16171f; border-radius: 4px; margin-top: 15px;">
-                    <span style="color: #a0aec0; font-size: 13px;">課程定位：{q_day} {q_period} 於 {d3}</span><br>
-                    <span style="color: #a0aec0; font-size: 13px;">上課時間：{p_info["start"][0]:02d}:{p_info["start"][1]:02d}</span>
-                    <hr style="border-color: #2d3748; margin: 12px 0;">
-                    <div style="font-size: 14px; color: #cbd5e1; font-weight: 300; letter-spacing: 0.5px;">最晚出發防線</div>
-                    <div style="font-size: 36px; font-weight: 600; color: #e53e3e; margin-top: 5px; font-family: monospace;">
-                        {latest_dep // 60:02d}:{latest_dep % 60:02d}
-                    </div>
-                </div>
-                """)
+                # 改用純官方原生卡片樣式渲染，杜絕任何相容性錯誤
+                st.metric(
+                    label=f"🚨 最晚出發防線 ({q_day} {q_period} 於 {d3})",
+                    value=f"{latest_dep // 60:02d}:{latest_dep % 60:02d}"
+                )
+                st.caption(f"課程準時開課時間：{p_info['start'][0]:02d}:{p_info['start'][1]:02d} | 預估通勤耗時：{avg_commute} 分鐘")
 
 # --- 分頁 4：課表設定 ---
 with tab4:
-    st.markdown("<br>", unsafe_with_html_allowed=True)
+    st.write("")
     c_day = st.selectbox("上課星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
     c_period = st.selectbox("上課節次", list(NTU_PERIODS.keys()))
     c_loc = st.selectbox("教室位置", classroom_options)
     
-    if st.button("儲存課表綁定"):
+    if st.button("💾 儲存課表綁定"):
         key = f"{c_day}_{c_period}"
         data["schedule"][key] = {"has_class": True, "location": c_loc}
         save_data(data)
