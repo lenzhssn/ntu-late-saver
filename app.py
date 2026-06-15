@@ -64,7 +64,8 @@ def get_current_ntu_period_info():
 # --- 網頁全域外觀設定（高級感深色調）---
 st.set_page_config(page_title="NTU Late Saver", layout="centered")
 
-st.markdown("""
+# 修正相容性：移除舊版 markdown 注入法，改用最新的 st.html 來穩定渲染極簡純黑風格
+st.html("""
     <style>
     .stApp {
         background-color: #12131a;
@@ -99,7 +100,7 @@ st.markdown("""
         border-bottom-color: #2b5c8f !important;
     }
     </style>
-""", unsafe_with_html_allowed=True)
+""")
 
 st.title("NTU Late Saver")
 
@@ -143,7 +144,7 @@ with tab1:
             if start_loc and dest_loc:
                 if start_loc not in data["locations"] and s1 == "其他":
                     data["locations"].append(start_loc)
-                if dest_loc not in data["locations"] and d1 == "開他":
+                if dest_loc not in data["locations"] and d1 == "其他":
                     data["locations"].append(dest_loc)
                 
                 data["history"].append({
@@ -179,7 +180,7 @@ with tab2:
 with tab3:
     st.markdown("<br>", unsafe_with_html_allowed=True)
     s3 = st.selectbox("出發地", data["locations"] + ["其他"], key="s3")
-    s3_other = st.text_input("新起點名稱", placeholder="請輸入自訂起點", key="s3_o") if s3 == "其他" else ""
+    s3_other = st.text_input("新起點名稱", placeholder="請輸入自訂起點", key="s3_o") if s3 == " campaigners" else ""
     
     q_day = st.selectbox("查詢星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"], index=["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"].index(cur_day_init))
     q_period = st.selectbox("查詢節次", list(NTU_PERIODS.keys()), index=list(NTU_PERIODS.keys()).index(cur_period_init))
@@ -203,7 +204,7 @@ with tab3:
                 class_start_in_mins = p_info["start"][0] * 60 + p_info["start"][1]
                 latest_dep = int(class_start_in_mins - avg_commute)
                 
-                st.markdown(f"""
+                st.html(f"""
                 <div style="padding: 20px; border: 1px solid #2d3748; background-color: #16171f; border-radius: 4px; margin-top: 15px;">
                     <span style="color: #a0aec0; font-size: 13px;">課程定位：{q_day} {q_period} 於 {d3}</span><br>
                     <span style="color: #a0aec0; font-size: 13px;">上課時間：{p_info["start"][0]:02d}:{p_info["start"][1]:02d}</span>
@@ -213,7 +214,7 @@ with tab3:
                         {latest_dep // 60:02d}:{latest_dep % 60:02d}
                     </div>
                 </div>
-                """, unsafe_with_html_allowed=True)
+                """)
 
 # --- 分頁 4：課表設定 ---
 with tab4:
