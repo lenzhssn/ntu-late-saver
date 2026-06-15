@@ -65,7 +65,7 @@ def get_current_ntu_period_info():
 st.set_page_config(page_title="NTU Late Saver", layout="centered")
 
 st.title("NTU Late Saver")
-st.caption("台大專屬 · 自動對齊上課鐘聲的通勤死線預報系統")
+st.caption("專屬於台大生的訓練準時夥伴")
 
 data = load_data()
 cur_day_init, cur_period_init = get_current_ntu_period_info()
@@ -186,3 +186,5 @@ with tab4:
         data["schedule"][key] = {"has_class": True, "location": c_loc}
         save_data(data)
         st.success(f"設定已更新：{c_day} {c_period} 教室已綁定為 【{c_loc}】")
+    
+# st.sidebar.markdown("### 🌍 全域環境設定")
