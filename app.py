@@ -48,15 +48,11 @@ def get_current_period():
 def get_unlocked_titles(history):
     unlocked = set()
     # 邏輯判定
-    if len(history) >= 1: unlocked.add("通勤新手")
-    # 連續30次提早到 (早到)
     if len(history) >= 30 and all(h.get("status") == "早到" for h in history[-30:]): 
         unlocked.add("時間管理大師")
     if len(history) >= 30: unlocked.add("通勤馬拉松")
     if len([h for h in history if h.get("period") in ["第 0 節", "第 1 節"] and h.get("status") == "早到"]) >= 3: 
         unlocked.add("早鳥專屬")
-    if any(h.get("status") == "早到" and h.get("diff", 0) <= 1 for h in history): 
-        unlocked.add("死線戰士")
     if any(h.get("weather") == "雨天" and h.get("status") == "早到" for h in history): 
         unlocked.add("舟山路泳將")
     if len(history) >= 5 and (len([h for h in history if h.get("status") == "遲到"]) / len(history) > 0.5): 
@@ -138,19 +134,15 @@ if user_name:
 
     with tab5:
         st.subheader("🏆 成就收藏櫃")
-        # 定義：名稱: (顏色, 圖示, 隱藏條件描述)
         ACH = {
-            "通勤新手": ("green", "🔰", "累積 1 次紀錄"),
-            "時間管理大師": ("blue", "⏰", "連續 30 次提早到"),
+            "時間管理大師": ("blue", "⏰", "？？？"),
             "早鳥專屬": ("yellow", "🐦", "第 2 節前 3 次早到"),
-            "遲到王": ("red", "🤡", "遲到率 > 50%"),
+            "遲到王": ("red", "🤡", "？？？"),
             "通勤馬拉松": ("orange", "🏃", "累積 30 次通勤"),
-            "死線戰士": ("violet", "⚔️", "精準早到 1 分鐘內"),
-            "舟山路泳將": ("cyan", "🏊", "雨天早到")
+            "舟山路泳將": ("cyan", "🏊", "？？？")
         }
         
         unlocked = get_unlocked_titles(data["history"])
-        # 偵測解鎖瞬間 (氣球效果)
         if "last_cnt" not in st.session_state: st.session_state.last_cnt = len(unlocked)
         if len(unlocked) > st.session_state.last_cnt:
             st.balloons()
@@ -162,6 +154,6 @@ if user_name:
                 if t in unlocked:
                     st.markdown(f"**{icon} :{col}[{t}]**")
                 else:
-                    st.markdown(f"🔒 :gray[？？？]")
+                    st.markdown(f"🔒 :gray[{t}]")
                     with st.expander("查看條件"): st.caption(desc)
 else: st.info("請輸入ID開始")
