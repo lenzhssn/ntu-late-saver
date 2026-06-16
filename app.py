@@ -55,7 +55,8 @@ def get_unlocked_titles(history):
         unlocked.add("早起的鳥兒")
     if any(h.get("weather") == "雨天" and h.get("status") == "早到" for h in history): 
         unlocked.add("舟山河泳將")
-    if len(history) >= 5 and (len([h for h in history if h.get("status") == "遲到"]) / len(history) > 0.5): 
+    # 修改後條件：累積遲到 5 次即可達成
+    if len([h for h in history if h.get("status") == "遲到"]) >= 5: 
         unlocked.add("請問你現在那邊是幾點")
     return unlocked
 
@@ -139,11 +140,11 @@ if user_name:
         st.subheader("🏆 成就收藏櫃")
         # 格式：名稱: (顏色, 圖示, 條件描述, 是否隱藏)
         ACH = {
-            "時間管理大師": ("blue", "⏰", "連續 30 次提早到", True),
+            "時間管理大師": ("pink", "⏰", "連續 30 次提早到", True),
             "早起的鳥兒": ("yellow", "🐦", "早8以前的課累計早到3次", False),
-            "請問你現在那邊是幾點": ("red", "🤡", "遲到率超過 50% (至少5次)", True),
+            "請問你現在那邊是幾點": ("red", "🤡", "累積遲到 5 次", True),
             "全勤獎": ("orange", "✨", "累積 30 次通勤", False),
-            "舟山河泳將": ("cyan", "🏊", "雨天早到", True)
+            "舟山河泳將": ("blue", "🏊", "雨天早到", True)
         }
         
         unlocked = get_unlocked_titles(data["history"])
