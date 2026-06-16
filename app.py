@@ -47,16 +47,20 @@ def get_current_period():
 
 def get_unlocked_titles(history):
     unlocked = set()
-    # 邏輯判定
+    # 時間管理大師：連續30次提早到
     if len(history) >= 30 and all(h.get("status") == "早到" for h in history[-30:]): 
         unlocked.add("時間管理大師")
-    if len(history) >= 30: unlocked.add("通勤馬拉松")
+    # 全勤獎：累積 30 次通勤
+    if len(history) >= 30: unlocked.add("全勤獎")
+    # 早起的鳥兒：第0/1節早到3次
     if len([h for h in history if h.get("period") in ["第 0 節", "第 1 節"] and h.get("status") == "早到"]) >= 3: 
-        unlocked.add("早鳥專屬")
+        unlocked.add("早起的鳥兒")
+    # 舟山河泳將：雨天早到
     if any(h.get("weather") == "雨天" and h.get("status") == "早到" for h in history): 
-        unlocked.add("舟山路泳將")
+        unlocked.add("舟山河泳將")
+    # 請問你現在那邊是幾點：遲到率 > 50%
     if len(history) >= 5 and (len([h for h in history if h.get("status") == "遲到"]) / len(history) > 0.5): 
-        unlocked.add("遲到王")
+        unlocked.add("請問你現在那邊是幾點")
     return unlocked
 
 st.set_page_config(page_title="NTU Late Saver", layout="centered")
@@ -88,11 +92,14 @@ if user_name:
                 st.session_state.last_dur = round((time.time() - st.session_state.start_time) / 60, 1)
                 st.session_state.is_timing = False
                 st.rerun()
+        
         if "last_dur" in st.session_state:
             st.divider()
             st.subheader(f"本次耗時：{st.session_state.last_dur} 分鐘")
             status = st.radio("本次狀態", ["早到", "遲到"])
-            diff = st.number_input("與目標時間差 (分)", min_value=0, value=0)
+            # 修改：最小輸入值為 1
+            diff = st.number_input("與目標時間差 (分)", min_value=1, value=1, help="請輸入大於 0 的分鐘數")
+            
             if st.button("確認提交紀錄"):
                 data["history"].append({"start": (s1 if s1!="其他" else s1_o), "dest": (d1 if d1!="其他" else d1_o), "trans": mode, "weather": weather, "time": st.session_state.last_dur, "status": status, "diff": diff, "period": cur_period})
                 save_data(data, user_name)
@@ -100,6 +107,7 @@ if user_name:
                 del st.session_state.last_dur
                 st.rerun()
 
+    # ... (其餘 tab2~4 邏輯保持不變)
     with tab2:
         s2 = st.selectbox("出發地", locs + ["其他"], key="s2")
         d2 = st.selectbox("目的地", locs + ["其他"], key="d2")
