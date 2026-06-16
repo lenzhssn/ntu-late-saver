@@ -47,18 +47,14 @@ def get_current_period():
 
 def get_unlocked_titles(history):
     unlocked = set()
-    # 時間管理大師：連續30次提早到
+    # 邏輯判定
     if len(history) >= 30 and all(h.get("status") == "早到" for h in history[-30:]): 
         unlocked.add("時間管理大師")
-    # 全勤獎：累積 30 次通勤
     if len(history) >= 30: unlocked.add("全勤獎")
-    # 早起的鳥兒：第0/1節早到3次
     if len([h for h in history if h.get("period") in ["第 0 節", "第 1 節"] and h.get("status") == "早到"]) >= 3: 
         unlocked.add("早起的鳥兒")
-    # 舟山河泳將：雨天早到
     if any(h.get("weather") == "雨天" and h.get("status") == "早到" for h in history): 
         unlocked.add("舟山河泳將")
-    # 請問你現在那邊是幾點：遲到率 > 50%
     if len(history) >= 5 and (len([h for h in history if h.get("status") == "遲到"]) / len(history) > 0.5): 
         unlocked.add("請問你現在那邊是幾點")
     return unlocked
@@ -97,8 +93,8 @@ if user_name:
             st.divider()
             st.subheader(f"本次耗時：{st.session_state.last_dur} 分鐘")
             status = st.radio("本次狀態", ["早到", "遲到"])
-            # 修改：最小輸入值為 1
-            diff = st.number_input("與目標時間差 (分)", min_value=1, value=1, help="請輸入大於 0 的分鐘數")
+            # 修改：最小輸入值為 1，強制要求輸入非 0 時間
+            diff = st.number_input("與目標時間差 (分)", min_value=1, value=1)
             
             if st.button("確認提交紀錄"):
                 data["history"].append({"start": (s1 if s1!="其他" else s1_o), "dest": (d1 if d1!="其他" else d1_o), "trans": mode, "weather": weather, "time": st.session_state.last_dur, "status": status, "diff": diff, "period": cur_period})
@@ -107,7 +103,6 @@ if user_name:
                 del st.session_state.last_dur
                 st.rerun()
 
-    # ... (其餘 tab2~4 邏輯保持不變)
     with tab2:
         s2 = st.selectbox("出發地", locs + ["其他"], key="s2")
         d2 = st.selectbox("目的地", locs + ["其他"], key="d2")
@@ -142,26 +137,32 @@ if user_name:
 
     with tab5:
         st.subheader("🏆 成就收藏櫃")
+        # 格式：名稱: (顏色, 圖示, 條件描述, 是否隱藏)
         ACH = {
-            "時間管理大師": ("blue", "⏰", "？？？"),
-            "早起的鳥兒": ("yellow", "🐦", "早8以前的課累計早到3次"),
-            "請問你現在那邊是幾點": ("red", "🤡", "？？？"),
-            "全勤獎": ("orange", "✨", "累積 30 次通勤"),
-            "舟山河泳將": ("cyan", "🏊", "？？？")
+            "時間管理大師": ("blue", "⏰", "連續 30 次提早到", True),
+            "早起的鳥兒": ("yellow", "🐦", "早8以前的課累計早到3次", False),
+            "請問你現在那邊是幾點": ("red", "🤡", "遲到率超過 50% (至少5次)", True),
+            "全勤獎": ("orange", "✨", "累積 30 次通勤", False),
+            "舟山河泳將": ("cyan", "🏊", "雨天早到", True)
         }
         
         unlocked = get_unlocked_titles(data["history"])
+        # 動態慶祝機制
         if "last_cnt" not in st.session_state: st.session_state.last_cnt = len(unlocked)
         if len(unlocked) > st.session_state.last_cnt:
             st.balloons()
             st.session_state.last_cnt = len(unlocked)
             
         cols = st.columns(2)
-        for i, (t, (col, icon, desc)) in enumerate(ACH.items()):
+        for i, (t, (col, icon, desc, is_hidden)) in enumerate(ACH.items()):
             with cols[i % 2]:
                 if t in unlocked:
                     st.markdown(f"**{icon} :{col}[{t}]**")
+                    with st.expander("查看條件 (已達成)"):
+                        st.caption(desc)
                 else:
                     st.markdown(f"🔒 :gray[{t}]")
-                    with st.expander("查看條件"): st.caption(desc)
+                    display_desc = "？？？" if is_hidden else desc
+                    with st.expander("查看條件"):
+                        st.caption(display_desc)
 else: st.info("請輸入ID開始")
