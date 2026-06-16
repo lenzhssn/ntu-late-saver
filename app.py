@@ -51,14 +51,24 @@ def get_current_ntu_period_info():
     now = datetime.datetime.now()
     weekday_idx = now.weekday()
     days = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
-    current_day = days[weekday_idx] if weekday_idx < 6 else "星期一"
+    
+    # --- 新增的判斷邏輯 ---
+    if weekday_idx == 6:  # 6 代表星期日
+        return "星期日", "無課程安排"
+    
+    current_day = days[weekday_idx]
+    # ---------------------
+    
     current_time_val = now.hour * 60 + now.minute
-    current_period = "第 1 節"
+    current_period = "第 1 節"  # 預設值
+    
     for period, t_range in NTU_PERIODS.items():
         start_val = t_range["start"][0] * 60 + t_range["start"][1]
+        # 如果現在時間早於該節課結束（開始時間+50分），則判定為該節課
         if current_time_val <= start_val + 50:
             current_period = period
             break
+            
     return current_day, current_period
 
 
