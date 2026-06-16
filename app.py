@@ -24,27 +24,25 @@ NTU_PERIODS = {
     "第 D 節": {"start": (21, 10), "end": (22, 0)},
 }
 
-def load_data():
+def get_user_file(username):
+    return f"{username}_ntu_data.json"
+
+def load_data(username):
+    filename = get_user_file(username)
     default_locations = [
         "公館捷運站", "科技大樓捷運站", "新生教學館", "綜合體育館", "女九", "博雅教學館",
         "共同教學館", "台大管院1管", "台大管院2管", "綜合教學館", "活大", "二活", "舊體育館", "戶外泳池"
     ]
-    if not os.path.exists(DATA_FILE):
+    if not os.path.exists(filename):
         return {"history": [], "locations": default_locations, "schedule": {}}
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
+    with open(filename, "r", encoding="utf-8") as f:
         data = json.load(f)
-    if "locations" not in data:
-        data["locations"] = default_locations
-    else:
-        for loc in default_locations:
-            if loc not in data["locations"]:
-                data["locations"].append(loc)
-    if "schedule" not in data:
-        data["schedule"] = {}
+    if "locations" not in data: data["locations"] = default_locations
+    if "schedule" not in data: data["schedule"] = {}
     return data
 
-def save_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
+def save_data(data, username):
+    with open(get_user_file(username), "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 def get_current_ntu_period_info():
