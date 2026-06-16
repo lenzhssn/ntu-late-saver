@@ -61,7 +61,7 @@ def get_current_ntu_period_info():
             break
     return days[weekday_idx], current_period
 
-st.set_page_config(page_title="NTU Late Saver 台大準時登入器", layout="centered")
+st.set_page_config(page_title="NTU Late Saver", layout="centered")
 st.title("NTU Late Saver")
 user_name = st.text_input("請輸入您的個人ID以載入數據")
 
