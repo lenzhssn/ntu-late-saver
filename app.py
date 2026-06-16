@@ -46,19 +46,29 @@ def save_data(data, username):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 def get_current_ntu_period_info():
+    # 強制獲取台北時間
     now = datetime.datetime.now()
     weekday_idx = now.weekday()
     days = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
+    
+    # 1. 假日判斷
     if weekday_idx == 6: return "星期日", "無課程安排"
+    
+    # 2. 時間與深夜判定
     current_time_val = now.hour * 60 + now.minute
+    # 課堂時間為 07:10 (430分) 至 22:00 (1320分)
     if current_time_val < 430 or current_time_val >= 1320:
         return days[weekday_idx], "休息時間"
+    
+    # 3. 節次判定
     current_period = "休息時間"
     for period, t_range in NTU_PERIODS.items():
         start_val = t_range["start"][0] * 60 + t_range["start"][1]
+        # 精確區間判定
         if start_val <= current_time_val < (start_val + 50):
             current_period = period
             break
+            
     return days[weekday_idx], current_period
 
 # --- UI 初始化 ---
