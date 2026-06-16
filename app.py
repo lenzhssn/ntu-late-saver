@@ -47,7 +47,6 @@ def get_current_period():
 
 def get_unlocked_titles(history):
     unlocked = set()
-    # 邏輯判定
     if len([h for h in history if h.get("status") == "早到" and h.get("diff", 0) >= 1]) >= 3: 
         unlocked.add("時間管理大師")
     if len(history) >= 30: unlocked.add("全勤獎")
@@ -68,7 +67,7 @@ if user_name:
     cur_day, cur_period = get_current_period()
     locs = data["locations"]
     
-    st.sidebar.info(f"當前節次：{cur_period}")
+    st.sidebar.info(f"當前時間：{cur_day} {cur_period}")
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["記錄通勤", "情境查詢", "智慧防遲到", "課表設定", "成就中心"])
     mode = st.sidebar.radio("通勤方式", ["走路", "腳踏車"])
     weather = st.sidebar.radio("天氣", ["晴天", "雨天"])
@@ -95,10 +94,22 @@ if user_name:
             status = st.radio("本次狀態", ["早到", "遲到"])
             diff = st.number_input("與目標時間差 (分)", min_value=1, value=1)
             
+            # 自動偵測綁定邏輯
+            matched_class = None
+            key = f"{cur_day}_{cur_period}"
+            if key in data["schedule"]:
+                matched_class = data["schedule"][key]["location"]
+
             if st.button("確認提交紀錄"):
-                data["history"].append({"start": s1, "dest": d1, "trans": mode, "weather": weather, "time": st.session_state.last_dur, "status": status, "diff": diff, "period": cur_period})
+                data["history"].append({
+                    "start": s1, "dest": d1, "trans": mode, "weather": weather, 
+                    "time": st.session_state.last_dur, "status": status, 
+                    "diff": diff, "period": cur_period, "class": matched_class
+                })
                 save_data(data, user_name)
-                st.success(f"紀錄已儲存！(節次: {cur_period})")
+                msg = f"紀錄已儲存！"
+                if matched_class: msg += f" (已自動綁定課程: {matched_class})"
+                st.success(msg)
                 del st.session_state.last_dur
                 st.rerun()
 
