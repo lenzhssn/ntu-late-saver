@@ -4,7 +4,7 @@ import time
 import datetime
 import streamlit as st
 
-# 節次時間定義 (保持不變)
+# 節次時間定義
 NTU_PERIODS = {
     "第 0 節": {"start": (7, 10), "end": (8, 0)},
     "第 1 節": {"start": (8, 10), "end": (9, 0)},
@@ -47,18 +47,14 @@ def get_current_period():
 
 def get_unlocked_titles(history):
     unlocked = set()
-    # 時間管理大師：早到 1 分鐘以上，累積 3 次
+    # 邏輯判定
     if len([h for h in history if h.get("status") == "早到" and h.get("diff", 0) >= 1]) >= 3: 
         unlocked.add("時間管理大師")
-    # 全勤獎：累積 30 次通勤
     if len(history) >= 30: unlocked.add("全勤獎")
-    # 早起的鳥兒：第0/1節早到3次
     if len([h for h in history if h.get("period") in ["第 0 節", "第 1 節"] and h.get("status") == "早到"]) >= 3: 
         unlocked.add("早起的鳥兒")
-    # 舟山河泳將：雨天早到
     if any(h.get("weather") == "雨天" and h.get("status") == "早到" for h in history): 
         unlocked.add("舟山河泳將")
-    # 請問你現在那邊是幾點：累積遲到 5 次
     if len([h for h in history if h.get("status") == "遲到"]) >= 5: 
         unlocked.add("請問你現在那邊是幾點")
     return unlocked
@@ -69,10 +65,10 @@ user_name = st.text_input("請輸入您的個人ID")
 
 if user_name:
     data = load_data(user_name)
-    cur_day, cur_period = get_current_period() # 自動抓取當前節次
+    cur_day, cur_period = get_current_period()
     locs = data["locations"]
     
-    st.sidebar.info(f"當前時間節次：{cur_period}") # 顯示給使用者確認
+    st.sidebar.info(f"當前節次：{cur_period}")
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["記錄通勤", "情境查詢", "智慧防遲到", "課表設定", "成就中心"])
     mode = st.sidebar.radio("通勤方式", ["走路", "腳踏車"])
     weather = st.sidebar.radio("天氣", ["晴天", "雨天"])
@@ -81,7 +77,8 @@ if user_name:
         s1 = st.selectbox("出發地", locs + ["其他"], key="s1")
         d1 = st.selectbox("目的地", locs + ["其他"], key="d1")
         
-        if not st.session_state.get("is_timing", False):
+        if "is_timing" not in st.session_state: st.session_state.is_timing = False
+        if not st.session_state.is_timing:
             if st.button("開始計時"):
                 st.session_state.is_timing = True
                 st.session_state.start_time = time.time()
@@ -96,40 +93,70 @@ if user_name:
             st.divider()
             st.subheader(f"本次耗時：{st.session_state.last_dur} 分鐘")
             status = st.radio("本次狀態", ["早到", "遲到"])
-            # 強制要求至少 1 分鐘，作為判定依據
-            diff = st.number_input("與目標時間差 (分鐘)", min_value=1, value=1)
+            diff = st.number_input("與目標時間差 (分)", min_value=1, value=1)
             
             if st.button("確認提交紀錄"):
-                data["history"].append({
-                    "start": s1, "dest": d1, "trans": mode, "weather": weather, 
-                    "time": st.session_state.last_dur, "status": status, 
-                    "diff": diff, "period": cur_period # 自動儲存當前自動偵測到的節次
-                })
+                data["history"].append({"start": s1, "dest": d1, "trans": mode, "weather": weather, "time": st.session_state.last_dur, "status": status, "diff": diff, "period": cur_period})
                 save_data(data, user_name)
-                st.success(f"紀錄已存入：{cur_period}")
+                st.success(f"紀錄已儲存！(節次: {cur_period})")
                 del st.session_state.last_dur
                 st.rerun()
 
-    # ... (其餘 tab 維持原樣)
+    with tab2:
+        s2 = st.selectbox("出發地", locs + ["其他"], key="s2")
+        d2 = st.selectbox("目的地", locs + ["其他"], key="d2")
+        if st.button("查詢數據"):
+            recs = [h for h in data["history"] if h["start"] == s2 and h["dest"] == d2]
+            if not recs: st.error("查無紀錄")
+            else: st.info(f"平均通勤時間：{round(sum([r['time'] for r in recs])/len(recs), 1)} 分鐘")
+
+    with tab3:
+        s3 = st.selectbox("出發地", locs + ["其他"], key="s3")
+        q_day = st.selectbox("星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
+        q_p = st.selectbox("節次", list(NTU_PERIODS.keys()))
+        if st.button("計算出發時間"):
+            info = data["schedule"].get(f"{q_day}_{q_p}")
+            if not info: st.warning("請先設定課表")
+            else:
+                recs = [h for h in data["history"] if h["start"] == s3 and h["dest"] == info["location"]]
+                if not recs: st.error("無路段數據")
+                else:
+                    avg = sum([r['time'] for r in recs]) / len(recs)
+                    latest = int((NTU_PERIODS[q_p]["start"][0]*60 + NTU_PERIODS[q_p]["start"][1]) - avg)
+                    st.metric("最晚出發時間", f"{latest//60:02d}:{latest%60:02d}")
+
+    with tab4:
+        c_day = st.selectbox("上課星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
+        c_p = st.selectbox("上課節次", list(NTU_PERIODS.keys()))
+        c_loc = st.selectbox("教室", [l for l in locs if l not in ["公館捷運站", "科技大樓捷運站"]] + ["其他"])
+        if st.button("儲存課表"):
+            data["schedule"][f"{c_day}_{c_p}"] = {"location": c_loc if c_loc != "其他" else st.text_input("輸入教室", key="loco")}
+            save_data(data, user_name)
+            st.success("課表已更新")
+
     with tab5:
         st.subheader("🏆 成就收藏櫃")
         ACH = {
-            "時間管理大師": ("blue", "⏰", "早到 1 分鐘以上，累積 3 次", True),
+            "時間管理大師": ("pink", "⏰", "早到 1 分鐘以上，累積 3 次", True),
             "早起的鳥兒": ("yellow", "🐦", "早8以前的課累計早到3次", False),
             "請問你現在那邊是幾點": ("red", "🤡", "累積遲到 5 次", True),
             "全勤獎": ("orange", "✨", "累積 30 次通勤", False),
-            "舟山河泳將": ("cyan", "🏊", "雨天早到", True)
+            "舟山河泳將": ("blue", "🏊", "雨天早到", True)
         }
-        unlocked = get_unlocked_titles(data["history"])
-        # (成就顯示邏輯保持不變)
+        
+        current_unlocked = get_unlocked_titles(data["history"])
+        if "unlocked_history" not in st.session_state: st.session_state.unlocked_history = set()
+        if len(current_unlocked) > len(st.session_state.unlocked_history):
+            st.balloons()
+            st.session_state.unlocked_history = current_unlocked
+            
         cols = st.columns(2)
         for i, (t, (col, icon, desc, is_hidden)) in enumerate(ACH.items()):
             with cols[i % 2]:
-                if t in unlocked:
+                if t in current_unlocked:
                     st.markdown(f"**{icon} :{col}[{t}]**")
                     with st.expander("查看條件 (已達成)"): st.caption(desc)
                 else:
                     st.markdown(f"🔒 :gray[{t}]")
-                    display_desc = "？？？" if is_hidden else desc
-                    with st.expander("查看條件"): st.caption(display_desc)
+                    with st.expander("查看條件"): st.caption("？？？" if is_hidden else desc)
 else: st.info("請輸入ID開始")
