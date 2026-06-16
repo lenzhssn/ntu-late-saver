@@ -61,7 +61,7 @@ def get_current_ntu_period_info():
             break
     return current_day, current_period
 
-# --- 網頁全域外觀設定（使用官方安全原生外觀，完美適應深色模式）---
+
 st.set_page_config(page_title="NTU Late Saver", layout="centered")
 
 st.title("NTU Late Saver")
