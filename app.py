@@ -133,7 +133,7 @@ if user_name:
         c_day = st.selectbox("上課星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
         c_period = st.selectbox("上課節次", list(NTU_PERIODS.keys()))
         c_loc = st.selectbox("教室位置", classroom_list + ["其他"])
-        c_loc_o = st.text_input("自行輸入教室名稱") if c_loc == "其他" else ""
+        c_loc_o = st.text_input("教室位置：") if c_loc == "其他" else ""
         if st.button("儲存課表"):
             final_loc = c_loc if c_loc != "其他" else c_loc_o
             if final_loc:
