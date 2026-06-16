@@ -4,8 +4,6 @@ import time
 import datetime
 import streamlit as st
 
-DATA_FILE = "ntu_personal_data.json"
-
 NTU_PERIODS = {
     "第 0 節": {"start": (7, 10), "end": (8, 0)},
     "第 1 節": {"start": (8, 10), "end": (9, 0)},
@@ -30,8 +28,9 @@ def get_user_file(username):
 def load_data(username):
     filename = get_user_file(username)
     default_locations = [
-        "公館捷運站", "科技大樓捷運站", "新生教學館", "綜合體育館", "女九", "博雅教學館",
-        "共同教學館", "台大管院1管", "台大管院2管", "綜合教學館", "活大", "二活", "舊體育館", "戶外泳池"
+        "公館捷運站", "科技大樓捷運站", "新生教學館", "綜合體育館", 
+        "博雅教學館", "共同教學館", "台大管院1管", "台大管院2管", 
+        "綜合教學館", "舊體育館", "戶外泳池"
     ]
     if not os.path.exists(filename):
         return {"history": [], "locations": default_locations, "schedule": {}}
@@ -48,149 +47,95 @@ def save_data(data, username):
 def get_current_ntu_period_info():
     now = datetime.datetime.now()
     weekday_idx = now.weekday()
+    # 星期日特別處理
+    if weekday_idx == 6: return "星期日", "無課程安排"
+    
     days = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
-    
-    # --- 新增的判斷邏輯 ---
-    if weekday_idx == 6:  # 6 代表星期日
-        return "星期日", "無課程安排"
-    
     current_day = days[weekday_idx]
-    # ---------------------
-    
     current_time_val = now.hour * 60 + now.minute
-    current_period = "第 1 節"  # 預設值
-    
+    current_period = "第 1 節"
     for period, t_range in NTU_PERIODS.items():
         start_val = t_range["start"][0] * 60 + t_range["start"][1]
-        # 如果現在時間早於該節課結束（開始時間+50分），則判定為該節課
         if current_time_val <= start_val + 50:
             current_period = period
             break
-            
     return current_day, current_period
 
-
 st.set_page_config(page_title="NTU Late Saver", layout="centered")
-
 st.title("NTU Late Saver")
-st.caption("專屬於台大生的訓練準時夥伴")
+user_name = st.text_input("請輸入您的個人ID")
 
-data = load_data()
-cur_day_init, cur_period_init = get_current_ntu_period_info()
-classroom_options = [loc for loc in data["locations"] if loc not in ["公館捷運站", "科技大樓捷運站"]]
-
-tab1, tab2, tab3, tab4 = st.tabs(["🚀 紀錄通勤", "🔍 情境查詢", "⏱️ 智慧防遲到", "⚙️ 課表設定"])
-
-st.sidebar.markdown("###  選擇 天氣/通勤方式")
-trans_mode = st.sidebar.radio("通勤方式", ["走路", "腳踏車"])
-weather_condition = st.sidebar.radio("當前天氣", ["晴天", "雨天"])
-
-# --- 分頁 1：紀錄通勤 ---
-with tab1:
-    st.write("") # 使用安全原生間距，替代 <br>
-    s1 = st.selectbox("出發地", data["locations"] + ["其他"], key="s1")
-    s1_other = st.text_input("新起點名稱", placeholder="請輸入自訂起點", key="s1_o") if s1 == "其他" else ""
+if user_name:
+    data = load_data(user_name)
+    cur_day_init, cur_period_init = get_current_ntu_period_info()
+    classroom_options = [loc for loc in data["locations"] if loc not in ["公館捷運站", "科技大樓捷運站"]]
     
-    d1 = st.selectbox("目的地", data["locations"] + ["其他"], key="d1")
-    d1_other = st.text_input("新終點名稱", placeholder="請輸入自訂終點", key="d1_o") if d1 == "其他" else ""
+    tab1, tab2, tab3, tab4 = st.tabs(["紀錄通勤", "情境查詢", "智慧防遲到", "課表設定"])
     
-    if "is_timing" not in st.session_state:
-        st.session_state.is_timing = False
-        st.session_state.start_time = 0
+    st.sidebar.markdown("### 選擇 天氣/通勤方式")
+    trans_mode = st.sidebar.radio("通勤方式", ["走路", "腳踏車"])
+    weather_condition = st.sidebar.radio("當前天氣", ["晴天", "雨天"])
 
-    if not st.session_state.is_timing:
-        if st.button("⏱️ 開始計時", key="btn_t1"):
-            st.session_state.is_timing = True
-            st.session_state.start_time = time.time()
-            st.rerun()
-    else:
-        st.warning("系統正持續記錄通勤時間中...")
-        if st.button("🛑 停止計時並儲存", key="btn_t2"):
-            duration = round((time.time() - st.session_state.start_time) / 60, 1)
-            st.session_state.is_timing = False
-            
-            start_loc = s1 if s1 != "其他" else s1_other
-            dest_loc = d1 if d1 != "其他" else d1_other
-            
-            if start_loc and dest_loc:
-                if start_loc not in data["locations"] and s1 == "其他":
-                    data["locations"].append(start_loc)
-                if dest_loc not in data["locations"] and d1 == "其他":
-                    data["locations"].append(dest_loc)
-                
-                data["history"].append({
-                    "start": start_loc, "dest": dest_loc, "trans": trans_mode,
-                    "weather": weather_condition, "time": duration
-                })
-                save_data(data)
-                st.success(f"數據儲存完成。自 {start_loc} 至 {dest_loc} 實測耗時 {duration} 分鐘。")
-                time.sleep(1)
+    with tab1:
+        s1 = st.selectbox("出發地", data["locations"] + ["其他"], key="s1")
+        s1_o = st.text_input("新起點名稱", key="s1_o") if s1 == "其他" else ""
+        d1 = st.selectbox("目的地", data["locations"] + ["其他"], key="d1")
+        d1_o = st.text_input("新終點名稱", key="d1_o") if d1 == "其他" else ""
+        if "is_timing" not in st.session_state: st.session_state.is_timing = False
+        if not st.session_state.is_timing:
+            if st.button("開始計時"):
+                st.session_state.is_timing = True
+                st.session_state.start_time = time.time()
                 st.rerun()
-
-# --- 分頁 2：情境查詢 ---
-with tab2:
-    st.write("")
-    s2 = st.selectbox("出發地", data["locations"] + ["其他"], key="s2")
-    s2_other = st.text_input("新起點名稱", placeholder="請輸入自訂起點", key="s2_o") if s2 == "其他" else ""
-    
-    d2 = st.selectbox("目的地", data["locations"] + ["其他"], key="d2")
-    d2_other = st.text_input("新終點名稱", placeholder="請輸入自訂終點", key="d2_o") if d2 == "其他" else ""
-    
-    if st.button("📊 查詢歷史數據"):
-        start_loc = s2 if s2 != "其他" else s2_other
-        dest_loc = d2 if d2 != "其他" else d2_other
-        records = [h for h in data["history"] if h["start"] == start_loc and h["dest"] == dest_loc and h["trans"] == trans_mode and h["weather"] == weather_condition]
-        
-        if not records:
-            st.error(f"資料庫查無歷史數據。請先建立自 {start_loc} 至 {dest_loc} 的通勤紀錄。")
         else:
-            avg_commute = round(sum(r["time"] for r in records) / len(records), 1)
-            st.info(f"分析結果：在該情境下，歷史平均通勤時間為 {avg_commute} 分鐘。")
+            if st.button("停止計時並儲存"):
+                duration = round((time.time() - st.session_state.start_time) / 60, 1)
+                st.session_state.is_timing = False
+                start, dest = (s1 if s1 != "其他" else s1_o), (d1 if d1 != "其他" else d1_o)
+                if start and dest:
+                    data["history"].append({"start": start, "dest": dest, "trans": trans_mode, "weather": weather_condition, "time": duration})
+                    save_data(data, user_name)
+                    st.success(f"儲存完成：{duration} 分鐘")
+                    st.rerun()
 
-# --- 分頁 3：智慧防遲到 ---
-with tab3:
-    st.write("")
-    s3 = st.selectbox("出發地", data["locations"] + ["其他"], key="s3")
-    s3_other = st.text_input("新起點名稱", placeholder="請輸入自訂起點", key="s3_o") if s3 == "其他" else ""
-    
-    q_day = st.selectbox("查詢星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"], index=["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"].index(cur_day_init))
-    q_period = st.selectbox("查詢節次", list(NTU_PERIODS.keys()), index=list(NTU_PERIODS.keys()).index(cur_period_init))
-    
-    if st.button("⏰ 計算出發時限"):
-        start_loc = s3 if s3 != "其他" else s3_other
-        schedule_key = f"{q_day}_{q_period}"
-        class_info = data.get("schedule", {}).get(schedule_key, None)
-        
-        if not class_info or not class_info.get("has_class"):
-            st.warning(f"查無課程排定資料。請先至【課表設定】分頁綁定教室。")
-        else:
-            d3 = class_info.get("location")
-            records = [h for h in data["history"] if h["start"] == start_loc and h["dest"] == d3 and h["trans"] == trans_mode and h["weather"] == weather_condition]
-            
-            if not records:
-                st.error(f"已識別課程教室為 【{d3}】。但系統缺少自 【{start_loc}】 至該教室的通勤數據，無法推算。")
+    with tab2:
+        s2 = st.selectbox("出發地", data["locations"] + ["其他"], key="s2")
+        s2_o = st.text_input("新起點名稱", key="s2_o") if s2 == "其他" else ""
+        d2 = st.selectbox("目的地", data["locations"] + ["其他"], key="d2")
+        d2_o = st.text_input("新終點名稱", key="d2_o") if d2 == "其他" else ""
+        if st.button("查詢歷史數據"):
+            start, dest = (s2 if s2 != "其他" else s2_o), (d2 if d2 != "其他" else d2_o)
+            records = [h for h in data["history"] if h["start"] == start and h["dest"] == dest and h["trans"] == trans_mode and h["weather"] == weather_condition]
+            if not records: st.error("查無紀錄")
+            else: st.info(f"平均通勤時間：{round(sum(r['time'] for r in records)/len(records), 1)} 分鐘")
+
+    with tab3:
+        st.write(f"系統狀態：{cur_day_init} / {cur_period_init}")
+        s3 = st.selectbox("出發地", data["locations"] + ["其他"], key="s3")
+        s3_o = st.text_input("新起點名稱", key="s3_o") if s3 == "其他" else ""
+        q_day = st.selectbox("查詢星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
+        q_period = st.selectbox("查詢節次", list(NTU_PERIODS.keys()))
+        if st.button("計算出發時限"):
+            start, key = (s3 if s3 != "其他" else s3_o), f"{q_day}_{q_period}"
+            info = data["schedule"].get(key)
+            if not info: st.warning("請先至課表設定綁定教室")
             else:
-                avg_commute = round(sum(r["time"] for r in records) / len(records), 1)
-                p_info = NTU_PERIODS[q_period]
-                class_start_in_mins = p_info["start"][0] * 60 + p_info["start"][1]
-                latest_dep = int(class_start_in_mins - avg_commute)
-                
-                # 改用純官方原生卡片樣式渲染，杜絕任何相容性錯誤
-                st.metric(
-                    label=f"🚨 最晚出發防線 ({q_day} {q_period} 於 {d3})",
-                    value=f"{latest_dep // 60:02d}:{latest_dep % 60:02d}"
-                )
-                st.caption(f"課程準時開課時間：{p_info['start'][0]:02d}:{p_info['start'][1]:02d} | 預估通勤耗時：{avg_commute} 分鐘")
+                d3 = info["location"]
+                records = [h for h in data["history"] if h["start"] == start and h["dest"] == d3 and h["trans"] == trans_mode and h["weather"] == weather_condition]
+                if not records: st.error("缺少該路段的通勤數據")
+                else:
+                    avg = sum(r['time'] for r in records)/len(records)
+                    start_min = NTU_PERIODS[q_period]["start"][0]*60 + NTU_PERIODS[q_period]["start"][1]
+                    latest = int(start_min - avg)
+                    st.metric("最晚出發防線", f"{latest//60:02d}:{latest%60:02d}")
 
-# --- 分頁 4：課表設定 ---
-with tab4:
-    st.write("")
-    c_day = st.selectbox("上課星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
-    c_period = st.selectbox("上課節次", list(NTU_PERIODS.keys()))
-    c_loc = st.selectbox("教室位置", classroom_options)
-    
-    if st.button("💾 儲存課表綁定"):
-        key = f"{c_day}_{c_period}"
-        data["schedule"][key] = {"has_class": True, "location": c_loc}
-        save_data(data)
-        st.success(f"設定已更新：{c_day} {c_period} 教室已綁定為 【{c_loc}】")
+    with tab4:
+        c_day = st.selectbox("上課星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
+        c_period = st.selectbox("上課節次", list(NTU_PERIODS.keys()))
+        c_loc = st.selectbox("教室位置", classroom_options)
+        if st.button("儲存課表綁定"):
+            data["schedule"][f"{c_day}_{c_period}"] = {"has_class": True, "location": c_loc}
+            save_data(data, user_name)
+            st.success("設定已更新")
+else:
+    st.info("請輸入ID以開始使用。")
