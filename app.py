@@ -4,6 +4,7 @@ import time
 import datetime
 import streamlit as st
 
+# 節次時間定義
 NTU_PERIODS = {
     "第 0 節": {"start": (7, 10), "end": (8, 0)},
     "第 1 節": {"start": (8, 10), "end": (9, 0)},
@@ -16,10 +17,6 @@ NTU_PERIODS = {
     "第 8 節": {"start": (15, 30), "end": (16, 20)},
     "第 9 節": {"start": (16, 30), "end": (17, 20)},
     "第 10 節": {"start": (17, 30), "end": (18, 20)},
-    "第 A 節": {"start": (18, 25), "end": (19, 15)},
-    "第 B 節": {"start": (19, 20), "end": (20, 10)},
-    "第 C 節": {"start": (20, 15), "end": (21, 5)},
-    "第 D 節": {"start": (21, 10), "end": (22, 0)},
 }
 
 def get_user_file(username): return f"{username}_ntu_data.json"
@@ -50,13 +47,20 @@ def get_current_period():
 
 def get_unlocked_titles(history):
     unlocked = set()
+    # 邏輯判定
     if len(history) >= 1: unlocked.add("通勤新手")
-    if len(history) >= 5 and all(h.get("status") != "遲到" for h in history[-5:]): unlocked.add("時間管理大師")
+    # 連續30次提早到 (早到)
+    if len(history) >= 30 and all(h.get("status") == "早到" for h in history[-30:]): 
+        unlocked.add("時間管理大師")
     if len(history) >= 30: unlocked.add("通勤馬拉松")
-    if len([h for h in history if h.get("period") in ["第 0 節", "第 1 節"] and h.get("status") == "早到"]) >= 3: unlocked.add("早鳥專屬")
-    if any(h.get("status") == "早到" and h.get("diff", 0) <= 1 for h in history): unlocked.add("死線戰士")
-    if any(h.get("weather") == "雨天" and h.get("status") == "早到" for h in history): unlocked.add("舟山路泳將")
-    if len([h for h in history if h.get("status") == "遲到"]) / len(history) > 0.5 and len(history) >= 5: unlocked.add("遲到王")
+    if len([h for h in history if h.get("period") in ["第 0 節", "第 1 節"] and h.get("status") == "早到"]) >= 3: 
+        unlocked.add("早鳥專屬")
+    if any(h.get("status") == "早到" and h.get("diff", 0) <= 1 for h in history): 
+        unlocked.add("死線戰士")
+    if any(h.get("weather") == "雨天" and h.get("status") == "早到" for h in history): 
+        unlocked.add("舟山路泳將")
+    if len(history) >= 5 and (len([h for h in history if h.get("status") == "遲到"]) / len(history) > 0.5): 
+        unlocked.add("遲到王")
     return unlocked
 
 st.set_page_config(page_title="NTU Late Saver", layout="centered")
@@ -76,6 +80,7 @@ if user_name:
         s1_o = st.text_input("出發地：", key="s1_o") if s1 == "其他" else ""
         d1 = st.selectbox("目的地", locs + ["其他"], key="d1")
         d1_o = st.text_input("目的地：", key="d1_o") if d1 == "其他" else ""
+        
         if "is_timing" not in st.session_state: st.session_state.is_timing = False
         if not st.session_state.is_timing:
             if st.button("開始計時"):
@@ -133,25 +138,30 @@ if user_name:
 
     with tab5:
         st.subheader("🏆 成就收藏櫃")
+        # 定義：名稱: (顏色, 圖示, 隱藏條件描述)
         ACH = {
-            "通勤新手": ("green", "🔰", "累積 1 次"),
-            "時間管理大師": ("blue", "⏰", "連續 5 次不遲到"),
+            "通勤新手": ("green", "🔰", "累積 1 次紀錄"),
+            "時間管理大師": ("blue", "⏰", "連續 30 次提早到"),
             "早鳥專屬": ("yellow", "🐦", "第 2 節前 3 次早到"),
             "遲到王": ("red", "🤡", "遲到率 > 50%"),
-            "通勤馬拉松": ("orange", "🏃", "累積 30 次"),
-            "死線戰士": ("violet", "⚔️", "？？？"),
-            "舟山路泳將": ("cyan", "🏊", "？？？")
+            "通勤馬拉松": ("orange", "🏃", "累積 30 次通勤"),
+            "死線戰士": ("violet", "⚔️", "精準早到 1 分鐘內"),
+            "舟山路泳將": ("cyan", "🏊", "雨天早到")
         }
+        
         unlocked = get_unlocked_titles(data["history"])
+        # 偵測解鎖瞬間 (氣球效果)
         if "last_cnt" not in st.session_state: st.session_state.last_cnt = len(unlocked)
         if len(unlocked) > st.session_state.last_cnt:
             st.balloons()
             st.session_state.last_cnt = len(unlocked)
+            
         cols = st.columns(2)
         for i, (t, (col, icon, desc)) in enumerate(ACH.items()):
             with cols[i % 2]:
-                if t in unlocked: st.markdown(f"**{icon} :{col}[{t}]**")
+                if t in unlocked:
+                    st.markdown(f"**{icon} :{col}[{t}]**")
                 else:
-                    st.markdown(f"🔒 :gray[{t}]")
+                    st.markdown(f"🔒 :gray[？？？]")
                     with st.expander("查看條件"): st.caption(desc)
 else: st.info("請輸入ID開始")
