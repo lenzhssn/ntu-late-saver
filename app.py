@@ -4,7 +4,6 @@ import time
 import datetime
 import streamlit as st
 
-# --- 核心設定 ---
 NTU_PERIODS = {
     "第 0 節": {"start": (7, 10), "end": (8, 0)},
     "第 1 節": {"start": (8, 10), "end": (9, 0)},
@@ -62,18 +61,16 @@ def get_current_ntu_period_info():
             break
     return days[weekday_idx], current_period
 
-# --- UI 初始化 ---
 st.set_page_config(page_title="NTU Late Saver", layout="centered")
 st.title("NTU Late Saver")
-user_name = st.text_input("請輸入您的個人識別碼 (學號/暱稱) 以載入數據")
+user_name = st.text_input("請輸入您的個人ID以載入數據")
 
 if user_name:
     data = load_data(user_name)
-    cur_day, cur_period = get_current_ntu_period_info()
-    # 這裡我們允許設定時包含所有地點
+    cur_day, cur_period = get_current_ntu_period_info
     classroom_list = [loc for loc in data["locations"] if loc not in ["公館捷運站", "科技大樓捷運站"]]
     
-    tab1, tab2, tab3, tab4 = st.tabs(["🚀 紀錄通勤", "🔍 情境查詢", "⏱️ 智慧防遲到", "⚙️ 課表設定"])
+    tab1, tab2, tab3, tab4 = st.tabs(["記錄通勤", "情境查詢", "智慧防遲到", "課表設定"])
     
     st.sidebar.markdown("### 選擇 天氣/通勤方式")
     trans_mode = st.sidebar.radio("通勤方式", ["走路", "腳踏車"])
@@ -86,12 +83,12 @@ if user_name:
         d1_o = st.text_input("新終點名稱", key="d1_o") if d1 == "其他" else ""
         if "is_timing" not in st.session_state: st.session_state.is_timing = False
         if not st.session_state.is_timing:
-            if st.button("⏱️ 開始計時"):
+            if st.button("開始計時"):
                 st.session_state.is_timing = True
                 st.session_state.start_time = time.time()
                 st.rerun()
         else:
-            if st.button("🛑 停止計時並儲存"):
+            if st.button("停止計時並儲存"):
                 duration = round((time.time() - st.session_state.start_time) / 60, 1)
                 st.session_state.is_timing = False
                 start, dest = (s1 if s1 != "其他" else s1_o), (d1 if d1 != "其他" else d1_o)
@@ -106,7 +103,7 @@ if user_name:
         s2_o = st.text_input("新起點名稱", key="s2_o") if s2 == "其他" else ""
         d2 = st.selectbox("目的地", data["locations"] + ["其他"], key="d2")
         d2_o = st.text_input("新終點名稱", key="d2_o") if d2 == "其他" else ""
-        if st.button("📊 查詢歷史數據"):
+        if st.button("查詢歷史數據"):
             start, dest = (s2 if s2 != "其他" else s2_o), (d2 if d2 != "其他" else d2_o)
             records = [h for h in data["history"] if h["start"] == start and h["dest"] == dest and h["trans"] == trans_mode and h["weather"] == weather_condition]
             if not records: st.error("查無紀錄")
@@ -118,7 +115,7 @@ if user_name:
         s3_o = st.text_input("新起點名稱", key="s3_o") if s3 == "其他" else ""
         q_day = st.selectbox("查詢星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
         q_period = st.selectbox("查詢節次", list(NTU_PERIODS.keys()))
-        if st.button("⏰ 計算出發時限"):
+        if st.button("計算出發時限"):
             start, key = (s3 if s3 != "其他" else s3_o), f"{q_day}_{q_period}"
             info = data["schedule"].get(key)
             if not info: st.warning("請先至課表設定綁定教室")
@@ -130,18 +127,18 @@ if user_name:
                     avg = sum(r['time'] for r in records)/len(records)
                     start_min = NTU_PERIODS[q_period]["start"][0]*60 + NTU_PERIODS[q_period]["start"][1]
                     latest = int(start_min - avg)
-                    st.metric("🚨 最晚出發防線", f"{latest//60:02d}:{latest%60:02d}")
+                    st.metric("最晚出發防線", f"{latest//60:02d}:{latest%60:02d}")
 
     with tab4:
         c_day = st.selectbox("上課星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
         c_period = st.selectbox("上課節次", list(NTU_PERIODS.keys()))
         c_loc = st.selectbox("教室位置", classroom_list + ["其他"])
         c_loc_o = st.text_input("自定義教室名稱") if c_loc == "其他" else ""
-        if st.button("💾 儲存課表綁定"):
+        if st.button("儲存課表綁定"):
             final_loc = c_loc if c_loc != "其他" else c_loc_o
             if final_loc:
                 data["schedule"][f"{c_day}_{c_period}"] = {"has_class": True, "location": final_loc}
                 save_data(data, user_name)
                 st.success(f"設定已更新：{c_day} {c_period} -> {final_loc}")
 else:
-    st.info("請輸入識別碼以開始使用。")
+    st.info("請輸入ID以開始使用。")
