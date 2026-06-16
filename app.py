@@ -46,28 +46,20 @@ def save_data(data, username):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 def get_current_ntu_period_info():
-    # 強制使用台北時區校正
     tz = datetime.timezone(datetime.timedelta(hours=8))
     now = datetime.datetime.now(tz)
-    
     weekday_idx = now.weekday()
     days = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
-    
-    # 假日判定
     if weekday_idx == 6: return "星期日", "無課程安排"
-    
     current_time_val = now.hour * 60 + now.minute
-    # 課堂時間範圍：07:10 (430) 到 22:00 (1320)
     if current_time_val < 430 or current_time_val >= 1320:
         return days[weekday_idx], "休息時間"
-    
     current_period = "休息時間"
     for period, t_range in NTU_PERIODS.items():
         start_val = t_range["start"][0] * 60 + t_range["start"][1]
         if start_val <= current_time_val < (start_val + 50):
             current_period = period
             break
-            
     return days[weekday_idx], current_period
 
 # --- UI 初始化 ---
@@ -78,7 +70,8 @@ user_name = st.text_input("請輸入您的個人識別碼 (學號/暱稱) 以載
 if user_name:
     data = load_data(user_name)
     cur_day, cur_period = get_current_ntu_period_info()
-    classroom_options = [loc for loc in data["locations"] if loc not in ["公館捷運站", "科技大樓捷運站"]]
+    # 這裡我們允許設定時包含所有地點
+    classroom_list = [loc for loc in data["locations"] if loc not in ["公館捷運站", "科技大樓捷運站"]]
     
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 紀錄通勤", "🔍 情境查詢", "⏱️ 智慧防遲到", "⚙️ 課表設定"])
     
@@ -142,10 +135,13 @@ if user_name:
     with tab4:
         c_day = st.selectbox("上課星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
         c_period = st.selectbox("上課節次", list(NTU_PERIODS.keys()))
-        c_loc = st.selectbox("教室位置", classroom_options)
+        c_loc = st.selectbox("教室位置", classroom_list + ["其他"])
+        c_loc_o = st.text_input("自定義教室名稱") if c_loc == "其他" else ""
         if st.button("💾 儲存課表綁定"):
-            data["schedule"][f"{c_day}_{c_period}"] = {"has_class": True, "location": c_loc}
-            save_data(data, user_name)
-            st.success("設定已更新")
+            final_loc = c_loc if c_loc != "其他" else c_loc_o
+            if final_loc:
+                data["schedule"][f"{c_day}_{c_period}"] = {"has_class": True, "location": final_loc}
+                save_data(data, user_name)
+                st.success(f"設定已更新：{c_day} {c_period} -> {final_loc}")
 else:
     st.info("請輸入識別碼以開始使用。")
