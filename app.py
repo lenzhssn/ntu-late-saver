@@ -67,7 +67,7 @@ user_name = st.text_input("請輸入您的個人ID以載入數據")
 
 if user_name:
     data = load_data(user_name)
-    cur_day, cur_period = get_current_ntu_period_info（）
+    cur_day, cur_period = get_current_ntu_period_info()
     classroom_list = [loc for loc in data["locations"] if loc not in ["公館捷運站", "科技大樓捷運站"]]
     
     tab1, tab2, tab3, tab4 = st.tabs(["記錄通勤", "情境查詢", "智慧防遲到", "課表設定"])
