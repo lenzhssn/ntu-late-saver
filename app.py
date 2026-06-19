@@ -120,7 +120,7 @@ if user_name:
             else: st.info(f"平均通勤時間：{round(sum([r['time'] for r in recs])/len(recs), 1)} 分鐘")
                 
     with tab3:
-        st.subheader("智慧通勤預測")
+        
         s3 = st.selectbox("預測起點", locs, key="s3")
         d3 = st.selectbox("預測終點", locs, key="d3")
         
@@ -170,7 +170,7 @@ if user_name:
             st.success("課表已更新")
 
     with tab5:
-        st.subheader("🏆 成就收藏櫃")
+        
         ACH = {
             "時間管理大師": ("green", "⏰", "早到 1 分鐘以上，累積 3 次", True),
             "早起的鳥兒": ("yellow", "🐦", "早8以前的課累計早到3次", False),
