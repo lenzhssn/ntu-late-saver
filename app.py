@@ -94,7 +94,6 @@ if user_name:
             status = st.radio("本次狀態", ["早到", "遲到"])
             diff = st.number_input("與目標時間差 (分)", min_value=1, value=1)
             
-            # 自動偵測綁定邏輯
             matched_class = None
             key = f"{cur_day}_{cur_period}"
             if key in data["schedule"]:
