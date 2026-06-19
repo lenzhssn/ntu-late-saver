@@ -121,6 +121,31 @@ if user_name:
             else: st.info(f"平均通勤時間：{round(sum([r['time'] for r in recs])/len(recs), 1)} 分鐘")
 
     with tab3:
+        with tab3:
+        st.subheader("智慧通勤預測")
+        s3 = st.selectbox("預測起點", locs, key="s3")
+        d3 = st.selectbox("預測終點", locs, key="d3")
+        
+        relevant = [h for h in data["history"] if h["start"] == s3 and h["dest"] == d3]
+        
+        pred_time = None
+        if relevant:
+            matches = [h["time"] for h in relevant if h["trans"] == mode and h["weather"] == weather]
+            if matches:
+                pred_time = sum(matches) / len(matches)
+            else:
+                base = relevant[0]["time"]
+                if mode != relevant[0]["trans"]: # 通勤方式修正
+                    pred_time = base * 3.5 if mode == "走路" else base / 3.5
+                elif weather != relevant[0]["weather"]: # 天氣修正
+                    pred_time = base * 1.5 if weather == "雨天" else base / 1.5
+                else:
+                    pred_time = base
+        if pred_time:
+            st.info(f"推算耗時：{round(pred_time, 1)} 分鐘")
+            st.caption("* 此數據為基於您的歷史經驗法則推算，實際狀況請依路況調整。")
+        else:
+            st.warning("尚無足夠數據進行推算，請多記錄幾次通勤！")
         s3 = st.selectbox("出發地", locs + ["其他"], key="s3")
         q_day = st.selectbox("星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
         q_p = st.selectbox("節次", list(NTU_PERIODS.keys()))
