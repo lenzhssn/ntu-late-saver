@@ -119,28 +119,35 @@ if user_name:
             recs = [h for h in data["history"] if h["start"] == s2 and h["dest"] == d2]
             if not recs: st.error("查無紀錄")
             else: st.info(f"平均通勤時間：{round(sum([r['time'] for r in recs])/len(recs), 1)} 分鐘")
-
+                
     with tab3:
-        with tab3:
         st.subheader("智慧通勤預測")
+        # 1. 取得當前設定
         s3 = st.selectbox("預測起點", locs, key="s3")
         d3 = st.selectbox("預測終點", locs, key="d3")
         
+        # 2. 篩選相關歷史
         relevant = [h for h in data["history"] if h["start"] == s3 and h["dest"] == d3]
         
+        # 3. 推算邏輯
         pred_time = None
         if relevant:
+            # 優先使用完全匹配的平均值
             matches = [h["time"] for h in relevant if h["trans"] == mode and h["weather"] == weather]
             if matches:
                 pred_time = sum(matches) / len(matches)
             else:
+                # 規則引擎推算 (冷啟動邏輯)
                 base = relevant[0]["time"]
+                # 根據模式或天氣進行修正
                 if mode != relevant[0]["trans"]: # 通勤方式修正
                     pred_time = base * 3.5 if mode == "走路" else base / 3.5
                 elif weather != relevant[0]["weather"]: # 天氣修正
                     pred_time = base * 1.5 if weather == "雨天" else base / 1.5
                 else:
                     pred_time = base
+
+        # 4. 顯示結果
         if pred_time:
             st.info(f"推算耗時：{round(pred_time, 1)} 分鐘")
             st.caption("* 此數據為基於您的歷史經驗法則推算，實際狀況請依路況調整。")
