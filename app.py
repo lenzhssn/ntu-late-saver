@@ -67,38 +67,4 @@ if user_name:
     locs = data["locations"]
     
     st.sidebar.info(f"當前時間：{cur_day} {cur_period}")
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["記錄通勤", "情境查詢", "智慧防遲到", "課表設定", "成就中心"])
-    mode = st.sidebar.radio("通勤方式", ["走路", "腳踏車"])
-    weather = st.sidebar.radio("天氣", ["晴天", "雨天"])
-
-    with tab1:
-        s1 = st.selectbox("出發地", locs + ["其他"], key="s1")
-        d1 = st.selectbox("目的地", locs + ["其他"], key="d1")
-        
-        if "is_timing" not in st.session_state: st.session_state.is_timing = False
-        if not st.session_state.is_timing:
-            if st.button("開始計時"):
-                st.session_state.is_timing = True
-                st.session_state.start_time = time.time()
-                st.rerun()
-        else:
-            if st.button("停止計時"):
-                st.session_state.last_dur = round((time.time() - st.session_state.start_time) / 60, 1)
-                st.session_state.is_timing = False
-                st.rerun()
-        
-        if "last_dur" in st.session_state:
-            st.divider()
-            st.subheader(f"本次耗時：{st.session_state.last_dur} 分鐘")
-            status = st.radio("本次狀態", ["早到", "遲到"])
-            diff = st.number_input("與目標時間差 (分)", min_value=1, value=1)
-            
-            matched_class = None
-            key = f"{cur_day}_{cur_period}"
-            if key in data["schedule"]:
-                matched_class = data["schedule"][key]["location"]
-
-            if st.button("確認提交紀錄"):
-                data["history"].append({
-                    "start": s1, "dest": d1, "trans": mode, "weather": weather, 
-                    "
+    tab1, tab2, tab3, tab4, tab5 = st.
