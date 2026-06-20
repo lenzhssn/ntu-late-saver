@@ -94,16 +94,11 @@ if user_name:
             status = st.radio("本次狀態", ["早到", "遲到"])
             diff = st.number_input("與目標時間差 (分)", min_value=1, value=1)
             
-            matched_class = None
-            key = f"{cur_day}_{cur_period}"
-            if key in data["schedule"]:
-                matched_class = data["schedule"][key]["location"]
-
             if st.button("確認提交紀錄"):
                 data["history"].append({
                     "start": s1, "dest": d1, "trans": mode, "weather": weather, 
                     "time": st.session_state.last_dur, "status": status, 
-                    "diff": diff, "period": cur_period, "class": matched_class
+                    "diff": diff, "period": cur_period
                 })
                 save_data(data, user_name)
                 st.success("紀錄已儲存！")
@@ -130,20 +125,12 @@ if user_name:
             if matches:
                 pred_time = sum(matches) / len(matches)
             else:
-                mode_matches = [h["time"] for h in relevant if h["trans"] == mode]
-                if mode_matches:
-                    base = sum(mode_matches) / len(mode_matches)
-                    pred_time = base * (1.5 if weather == "雨天" else 1.0)
-                else:
-                    all_avg = sum([h["time"] for h in relevant]) / len(relevant)
-                    factor_m = (1/3.5) if mode == "腳踏車" else 1.0
-                    factor_w = 1.5 if weather == "雨天" else 1.0
-                    pred_time = all_avg * factor_m * factor_w
+                base_recs = [h["time"] for h in relevant if h["trans"] == "走路" and h["weather"] == "晴天"]
+                base = sum(base_recs) / len(base_recs) if base_recs else (sum(h["time"] for h in relevant) / len(relevant))
+                pred_time = base * ((1/3.5) if mode == "腳踏車" else 1.0) * (1.5 if weather == "雨天" else 1.0)
 
-        if pred_time:
-            st.info(f"推算耗時：{round(pred_time, 1)} 分鐘")
-        else:
-            st.warning("尚無足夠數據！")
+        if pred_time: st.info(f"推算耗時：{round(pred_time, 1)} 分鐘")
+        else: st.warning("尚無足夠數據！")
         
         s3_extra = st.selectbox("出發地", locs + ["其他"], key="s3_extra")
         q_day = st.selectbox("星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
@@ -155,23 +142,14 @@ if user_name:
             else:
                 target_dest = info["location"]
                 relevant = [h for h in data["history"] if h["start"] == s3_extra and h["dest"] == target_dest]
-                if not relevant:
-                    st.error("無相關數據")
+                if not relevant: st.error("無相關數據")
                 else:
                     matches = [h["time"] for h in relevant if h["trans"] == mode and h["weather"] == weather]
-                    if matches:
-                        est_time = sum(matches) / len(matches)
+                    if matches: est_time = sum(matches) / len(matches)
                     else:
-                        mode_matches = [h["time"] for h in relevant if h["trans"] == mode]
-                        if mode_matches:
-                            base = sum(mode_matches) / len(mode_matches)
-                            est_time = base * (1.5 if weather == "雨天" else 1.0)
-                        else:
-                            all_avg = sum([h["time"] for h in relevant]) / len(relevant)
-                            factor_m = (1/3.5) if mode == "腳踏車" else 1.0
-                            factor_w = 1.5 if weather == "雨天" else 1.0
-                            est_time = all_avg * factor_m * factor_w
-                    
+                        base_recs = [h["time"] for h in relevant if h["trans"] == "走路" and h["weather"] == "晴天"]
+                        base = sum(base_recs) / len(base_recs) if base_recs else (sum(h["time"] for h in relevant) / len(relevant))
+                        est_time = base * ((1/3.5) if mode == "腳踏車" else 1.0) * (1.5 if weather == "雨天" else 1.0)
                     latest = int((NTU_PERIODS[q_p]["start"][0]*60 + NTU_PERIODS[q_p]["start"][1]) - est_time)
                     st.metric("最晚出發時間", f"{latest//60:02d}:{latest%60:02d}")
 
@@ -192,13 +170,11 @@ if user_name:
             "全勤獎": ("orange", "✨", "累積 30 次通勤", False),
             "舟山河泳將": ("blue", "🏊", "雨天早到", True)
         }
-        
         current_unlocked = get_unlocked_titles(data["history"])
         if "unlocked_history" not in st.session_state: st.session_state.unlocked_history = set()
         if len(current_unlocked) > len(st.session_state.unlocked_history):
             st.balloons()
             st.session_state.unlocked_history = current_unlocked
-            
         cols = st.columns(2)
         for i, (t, (col, icon, desc, is_hidden)) in enumerate(ACH.items()):
             with cols[i % 2]:
