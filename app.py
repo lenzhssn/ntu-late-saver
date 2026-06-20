@@ -67,6 +67,18 @@ if user_name:
     locs = data["locations"]
     
     st.sidebar.info(f"當前時間：{cur_day} {cur_period}")
+    
+    if cur_period != "休息時間":
+        key = f"{cur_day}_{cur_period}"
+        if key in data["schedule"]:
+            start_h, start_m = NTU_PERIODS[cur_period]["start"]
+            start_min = start_h * 60 + start_m
+            now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
+            now_min = now.hour * 60 + now.minute
+            diff = start_min - now_min
+            if 0 < diff <= 15:
+                st.warning(f"⚠️ {cur_period} starts in {diff} minutes! Move now!")
+
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["記錄通勤", "情境查詢", "智慧防遲到", "課表設定", "成就中心"])
     mode = st.sidebar.radio("通勤方式", ["走路", "腳踏車"])
     weather = st.sidebar.radio("天氣", ["晴天", "雨天"])
@@ -124,7 +136,6 @@ if user_name:
         d3 = st.selectbox("預測終點", locs, key="d3")
         
         relevant = [h for h in data["history"] if h["start"] == s3 and h["dest"] == d3]
-        
         pred_time = None
         if relevant:
             matches = [h["time"] for h in relevant if h["trans"] == mode and h["weather"] == weather]
@@ -152,7 +163,7 @@ if user_name:
             info = data["schedule"].get(f"{q_day}_{q_p}")
             if not info: st.warning("請先設定課表")
             else:
-                recs = [h for h in data["history"] if h["start"] == s3_extra and h["dest"] == info["location"]]
+                recs = [h for h in data["history"] if h["start"] == s3_extra and h["dest"] == info["location"] and h["trans"] == mode and h["weather"] == weather]
                 if not recs: st.error("無路段數據")
                 else:
                     avg = sum([r['time'] for r in recs]) / len(recs)
