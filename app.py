@@ -164,7 +164,7 @@ if user_name:
             if not info: st.warning("請先設定課表")
             else:
                 recs = [h for h in data["history"] if h["start"] == s3_extra and h["dest"] == info["location"] and h["trans"] == mode and h["weather"] == weather]
-                if not recs: st.error("無路段數據")
+                if not recs: st.error("無符合條件的數據，嘗試關閉模式/天氣篩選或多記錄幾次通勤")
                 else:
                     avg = sum([r['time'] for r in recs]) / len(recs)
                     latest = int((NTU_PERIODS[q_p]["start"][0]*60 + NTU_PERIODS[q_p]["start"][1]) - avg)
