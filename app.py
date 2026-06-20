@@ -68,17 +68,6 @@ if user_name:
     
     st.sidebar.info(f"當前時間：{cur_day} {cur_period}")
     
-    if cur_period != "休息時間":
-        key = f"{cur_day}_{cur_period}"
-        if key in data["schedule"]:
-            start_h, start_m = NTU_PERIODS[cur_period]["start"]
-            start_min = start_h * 60 + start_m
-            now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
-            now_min = now.hour * 60 + now.minute
-            diff = start_min - now_min
-            if 0 < diff <= 15:
-                st.warning(f"⚠️ {cur_period} starts in {diff} minutes! Move now!")
-
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["記錄通勤", "情境查詢", "智慧防遲到", "課表設定", "成就中心"])
     mode = st.sidebar.radio("通勤方式", ["走路", "腳踏車"])
     weather = st.sidebar.radio("天氣", ["晴天", "雨天"])
@@ -117,9 +106,7 @@ if user_name:
                     "diff": diff, "period": cur_period, "class": matched_class
                 })
                 save_data(data, user_name)
-                msg = "紀錄已儲存！"
-                if matched_class: msg += f" (已自動綁定課程: {matched_class})"
-                st.success(msg)
+                st.success("紀錄已儲存！")
                 del st.session_state.last_dur
                 st.rerun()
 
@@ -142,46 +129,36 @@ if user_name:
             if matches:
                 pred_time = sum(matches) / len(matches)
             else:
-                base = relevant[0]["time"]
-                if mode != relevant[0]["trans"]:
-                    pred_time = base * 3.5 if mode == "走路" else base / 3.5
-                elif weather != relevant[0]["weather"]:
-                    pred_time = base * 1.5 if weather == "雨天" else base / 1.5
-                else:
-                    pred_time = base
+                base = sum([h["time"] for h in relevant]) / len(relevant)
+                pred_time = base * (3.5 if mode == "走路" else 1.0) * (1.5 if weather == "雨天" else 1.0)
 
         if pred_time:
             st.info(f"推算耗時：{round(pred_time, 1)} 分鐘")
-            st.caption("* 此數據為基於您的歷史經驗法則推算，實際狀況請依路況調整。")
         else:
-            st.warning("尚無足夠數據進行推算，請多記錄幾次通勤！")
+            st.warning("尚無足夠數據進行推算！")
         
         s3_extra = st.selectbox("出發地", locs + ["其他"], key="s3_extra")
         q_day = st.selectbox("星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
         q_p = st.selectbox("節次", list(NTU_PERIODS.keys()))
+        
         if st.button("計算出發時間"):
             info = data["schedule"].get(f"{q_day}_{q_p}")
             if not info: st.warning("請先設定課表")
             else:
                 target_dest = info["location"]
                 relevant = [h for h in data["history"] if h["start"] == s3_extra and h["dest"] == target_dest]
-                est_time = None
-                
-                if relevant:
+                if not relevant:
+                    st.error("無相關數據，無法推算")
+                else:
                     matches = [h["time"] for h in relevant if h["trans"] == mode and h["weather"] == weather]
                     if matches:
                         est_time = sum(matches) / len(matches)
                     else:
-                        base = relevant[0]["time"]
-                        m_factor = 3.5 if mode != relevant[0]["trans"] else 1.0
-                        w_factor = 1.5 if weather != relevant[0]["weather"] else 1.0
-                        est_time = base * m_factor * w_factor
-                
-                if est_time:
+                        base = sum([h["time"] for h in relevant]) / len(relevant)
+                        est_time = base * (3.5 if mode == "走路" else 1.0) * (1.5 if weather == "雨天" else 1.0)
+                    
                     latest = int((NTU_PERIODS[q_p]["start"][0]*60 + NTU_PERIODS[q_p]["start"][1]) - est_time)
                     st.metric("最晚出發時間", f"{latest//60:02d}:{latest%60:02d}")
-                else:
-                    st.error("無相關數據，無法推算")
 
     with tab4:
         c_day = st.selectbox("上課星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
