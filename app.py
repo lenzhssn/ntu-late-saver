@@ -124,18 +124,26 @@ if user_name:
         
         relevant = [h for h in data["history"] if h["start"] == s3 and h["dest"] == d3]
         pred_time = None
+        
         if relevant:
             matches = [h["time"] for h in relevant if h["trans"] == mode and h["weather"] == weather]
             if matches:
                 pred_time = sum(matches) / len(matches)
             else:
-                base = sum([h["time"] for h in relevant]) / len(relevant)
-                pred_time = base * (3.5 if mode == "走路" else 1.0) * (1.5 if weather == "雨天" else 1.0)
+                mode_matches = [h["time"] for h in relevant if h["trans"] == mode]
+                if mode_matches:
+                    base = sum(mode_matches) / len(mode_matches)
+                    pred_time = base * (1.5 if weather == "雨天" else 1.0)
+                else:
+                    all_avg = sum([h["time"] for h in relevant]) / len(relevant)
+                    factor_m = (1/3.5) if mode == "腳踏車" else 1.0
+                    factor_w = 1.5 if weather == "雨天" else 1.0
+                    pred_time = all_avg * factor_m * factor_w
 
         if pred_time:
             st.info(f"推算耗時：{round(pred_time, 1)} 分鐘")
         else:
-            st.warning("尚無足夠數據進行推算！")
+            st.warning("尚無足夠數據！")
         
         s3_extra = st.selectbox("出發地", locs + ["其他"], key="s3_extra")
         q_day = st.selectbox("星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
@@ -148,14 +156,21 @@ if user_name:
                 target_dest = info["location"]
                 relevant = [h for h in data["history"] if h["start"] == s3_extra and h["dest"] == target_dest]
                 if not relevant:
-                    st.error("無相關數據，無法推算")
+                    st.error("無相關數據")
                 else:
                     matches = [h["time"] for h in relevant if h["trans"] == mode and h["weather"] == weather]
                     if matches:
                         est_time = sum(matches) / len(matches)
                     else:
-                        base = sum([h["time"] for h in relevant]) / len(relevant)
-                        est_time = base * (3.5 if mode == "走路" else 1.0) * (1.5 if weather == "雨天" else 1.0)
+                        mode_matches = [h["time"] for h in relevant if h["trans"] == mode]
+                        if mode_matches:
+                            base = sum(mode_matches) / len(mode_matches)
+                            est_time = base * (1.5 if weather == "雨天" else 1.0)
+                        else:
+                            all_avg = sum([h["time"] for h in relevant]) / len(relevant)
+                            factor_m = (1/3.5) if mode == "腳踏車" else 1.0
+                            factor_w = 1.5 if weather == "雨天" else 1.0
+                            est_time = all_avg * factor_m * factor_w
                     
                     latest = int((NTU_PERIODS[q_p]["start"][0]*60 + NTU_PERIODS[q_p]["start"][1]) - est_time)
                     st.metric("最晚出發時間", f"{latest//60:02d}:{latest%60:02d}")
