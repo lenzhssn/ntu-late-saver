@@ -173,9 +173,9 @@ if user_name:
                         est_time = sum(matches) / len(matches)
                     else:
                         base = relevant[0]["time"]
-                        if mode != relevant[0]["trans"]: est_time = base * 3.5 if mode == "走路" else base / 3.5
-                        elif weather != relevant[0]["weather"]: est_time = base * 1.5 if weather == "雨天" else base / 1.5
-                        else: est_time = base
+                        m_factor = 3.5 if mode != relevant[0]["trans"] else 1.0
+                        w_factor = 1.5 if weather != relevant[0]["weather"] else 1.0
+                        est_time = base * m_factor * w_factor
                 
                 if est_time:
                     latest = int((NTU_PERIODS[q_p]["start"][0]*60 + NTU_PERIODS[q_p]["start"][1]) - est_time)
