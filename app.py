@@ -163,12 +163,25 @@ if user_name:
             info = data["schedule"].get(f"{q_day}_{q_p}")
             if not info: st.warning("請先設定課表")
             else:
-                recs = [h for h in data["history"] if h["start"] == s3_extra and h["dest"] == info["location"] and h["trans"] == mode and h["weather"] == weather]
-                if not recs: st.error("無符合條件的數據，嘗試關閉模式/天氣篩選或多記錄幾次通勤")
-                else:
-                    avg = sum([r['time'] for r in recs]) / len(recs)
-                    latest = int((NTU_PERIODS[q_p]["start"][0]*60 + NTU_PERIODS[q_p]["start"][1]) - avg)
+                target_dest = info["location"]
+                relevant = [h for h in data["history"] if h["start"] == s3_extra and h["dest"] == target_dest]
+                est_time = None
+                
+                if relevant:
+                    matches = [h["time"] for h in relevant if h["trans"] == mode and h["weather"] == weather]
+                    if matches:
+                        est_time = sum(matches) / len(matches)
+                    else:
+                        base = relevant[0]["time"]
+                        if mode != relevant[0]["trans"]: est_time = base * 3.5 if mode == "走路" else base / 3.5
+                        elif weather != relevant[0]["weather"]: est_time = base * 1.5 if weather == "雨天" else base / 1.5
+                        else: est_time = base
+                
+                if est_time:
+                    latest = int((NTU_PERIODS[q_p]["start"][0]*60 + NTU_PERIODS[q_p]["start"][1]) - est_time)
                     st.metric("最晚出發時間", f"{latest//60:02d}:{latest%60:02d}")
+                else:
+                    st.error("無相關數據，無法推算")
 
     with tab4:
         c_day = st.selectbox("上課星期", ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六"])
